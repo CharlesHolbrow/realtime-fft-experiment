@@ -2,14 +2,7 @@ import numpy as np
 
 class Ring():
     """
-    note that unlike arrays when you slice Ring, both indices are inclusive
 
-    ```
-    a  = Ring(8)
-    a.append(range(8))
-    assert a[0] = 7
-    assert a[0:0] = [7]
-    ```
     """
     def __init__(self, length, dtype=None):
         self.__index = 0 # where we will place the next sample (not the last sample placed)
@@ -24,32 +17,28 @@ class Ring():
         if type(key) == int:
             return self.__content[(self.__index + key - 1)  % self.__length]
         elif type(key) is slice:
-            if key.step != None and key.step != 1:
-                raise TypeError('Ring does not support stepped slices')
-
-            start = 0
-            stop = 0
-            print key.start, key.stop, key.step
-            if key.start is not None: start = key.start
-            if key.stop is not None and key.stop < self.__length: stop = key.stop
-            print(start, stop)
-            start += self.__index - 1
-            start %= self.__length
-            stop += self.__index
-            print(start, stop)
-            results_to_end = self.__content[start:stop]
-            if stop < self.__length
-                return results_to_end
-
-            # at this point, the stop should always be larger than start. 
-            missing_size = len()
-
+            raise TypeError('Ring does not support slices')
 
     def __delitem__(self, key):
         raise Exception('Ring does not support deletion')
 
     def __len__(self):
         return self.__length
+
+    def recent(self, size):
+        """
+        Get the <size> most recently appended samples
+        """
+        if size <= self.__index:
+            return self.__content[self.__index - size:self.__index]
+
+        # we need to wrap
+        if size > self.__length:
+            raise IndexError('larger than current buffer size')
+
+        last_part = self.__content[:self.__index]
+        first_part = self.__content[-(size - len(last_part)):]
+        return np.concatenate([first_part, last_part])
 
     def append(self, items):
         count = len(items)
@@ -99,4 +88,9 @@ def test():
     assert(np.all(a.raw == [4, 1, 2, 3]))
     assert(a[0] == 4)
     assert(a[-1] == 3)
-
+    assert(np.all(a.recent(0) == []))
+    assert(np.all(a.recent(1) == [4]))
+    a.append([5])
+    assert(np.all(a.recent(2) == [4, 5]))
+    # test wrap around
+    assert(np.all(a.recent(3) == [3, 4, 5]))
