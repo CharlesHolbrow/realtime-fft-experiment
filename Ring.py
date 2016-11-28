@@ -1,6 +1,7 @@
 import numpy as np
+import weakref
 
-class Ring():
+class Ring(object):
     """
 
     """
@@ -8,6 +9,7 @@ class Ring():
         self.__index = 0 # where we will place the next sample (not the last sample placed)
         self.__content = np.zeros(length, dtype)
         self.__length = length
+        self.__positions = []
 
     def __setitem__(self, key, value):
         if key.step != None or key.step != 1:
@@ -15,7 +17,7 @@ class Ring():
 
     def __getitem__(self, key):
         if type(key) == int:
-            return self.__content[(self.__index + key - 1)  % self.__length]
+            return self.__content[self.index_of(key)]
         elif type(key) is slice:
             raise TypeError('Ring does not support slices')
 
@@ -24,6 +26,14 @@ class Ring():
 
     def __len__(self):
         return self.__length
+
+    def index_of(self, i):
+        """
+        i (int): a position relative to the last sample appended. If i is 0,
+                 this will get the index of the last sample added. If i is -1,
+                 this will get the index of the second last sample added
+        """
+        return (self.__index + i - 1)  % self.__length
 
     def recent(self, size):
         """
@@ -61,9 +71,93 @@ class Ring():
         self.__index += count
         self.__index %= self.__length
 
+    def create_position(self):
+        position = RingPosition(self)
+        self.__positions.append(position)
+        return position
+
     @property
     def raw(self):
-        return np.copy(self.__content)
+        return self.__content
+
+    @property
+    def index(self):
+        return self.__index
+
+
+
+class RingPosition(object):
+    def __init__(self, ring):
+        if not isinstance(ring, Ring):
+            raise TypeError('RingPosition requires an instance of Ring')
+        # weakref returns a function. call self.get_ring() to get the ring
+        self.get_ring   = weakref.ref(ring)
+
+        # Are all the samples between here and the ring[0] valid?
+        self.valid = True
+
+        # note that the __ring_index is a index OF the ring.__content
+        self.index = self.get_ring().index_of(0)
+
+    def advance(self, amount):
+        """ advance the index by <amount> samples """
+        ring = self.get_ring()
+        if amount > len(ring):
+            raise IndexError('advance amount larger than ring buffer size')
+
+        self.__ring_index += amount
+        self.__ring_index %= len(ring)
+
+    def get_samples(self, number):
+        if number > self.valid_buffer_length or number < 0:
+            print('get_sample argument out of range')
+            raise IndexError('get_sample agrument out of range')
+
+        ring = self.get_ring()
+        first_part = ring.raw[self.index:self.index + number]
+        missing_sample_count = number - len(first_part)
+        if missing_sample_count == 0:
+            return first_part
+        else:
+            return np.concatenate((first_part, ring.raw[:missing_sample_count]))
+
+    @property
+    def valid_buffer_length(self):
+        """ How many samples behind the 'seam' are we?
+
+        For example if 'C' is our current __ring_index, and 'G' is ring[0] (the
+        last sample appended), this will return 3. Note that in this example,
+        ring.__index would be pointing to f
+
+        [a, b, C, d, E, f]
+
+        This should be equal to the number of samples that it is safe to get
+        """
+        ring = self.get_ring()
+        if self.__ring_index <= ring.index_of(0):
+            return ring.index_of(0) - self.index + 1
+        else:
+            return ring.index_of(0) + len(ring) - self.index + 1
+
+    @property
+    def valid_ring_space(self):
+        """ How many samples may be appended to the ring without invalidating this position"""
+        ring = self.get_ring()
+        return len(ring) - self.valid_buffer_length
+
+    @property
+    def index(self):
+        return self.__ring_index
+
+    @index.setter
+    def index(self, i):
+        """ set the index of ring.__content[index]. Assume i is a valid index
+        """
+        if i >= len(self.get_ring()):
+            raise IndexError('index out of range')
+        self.__ring_index = i
+        self.valid = True
+
 
 def test():
     a = Ring(4)
@@ -94,3 +188,27 @@ def test():
     assert(np.all(a.recent(2) == [4, 5]))
     # test wrap around
     assert(np.all(a.recent(3) == [3, 4, 5]))
+
+    # test RingPosition
+    a = Ring(8)
+    p = a.create_position()
+
+    assert p.valid_buffer_length == 1
+    a.append(np.arange(4))
+    assert p.valid_buffer_length == 5
+    p.advance(1)
+    assert p.valid_buffer_length == 4
+    assert p.index == 0
+
+    assert np.all(p.get_samples(4) == [0, 1, 2, 3])
+    p.advance(2)
+    assert np.all(p.get_samples(2) == [2, 3])
+    a.append([4, 5, 6, 7, 8])
+    p.advance(4)
+    assert np.all(p.get_samples(2) == [6, 7])
+    # test wraping
+    assert np.all(p.get_samples(3) == [6, 7, 8])
+
+    return a, p
+
+
