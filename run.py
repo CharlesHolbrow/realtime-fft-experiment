@@ -33,8 +33,10 @@ try:
     cumulated_status = sd.CallbackFlags()
     size = 128 * 1024
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
-    ring_l = Ring(size)
-    ring_r = Ring(size)
+    input_buffer = Ring(size)
+    tap = input_buffer.create_position()
+    tap.index = input_buffer.index_of(-22050 + 1)
+    print 'valid tap buffer length: {0}'.format(tap.valid_buffer_length)
     shape = (0,0)
 
     def callback(indata, outdata, frames, time, status):
@@ -48,13 +50,10 @@ try:
             shape = np.shape(indata)
             print 'input shape: {0}'.format(np.shape(indata))
 
-        ring_l.append(indata.flatten())
-        delayed = ring_l.recent(22050)[:blocksize]
-        delayed = np.column_stack((delayed, delayed))
-
-        outdata[:] = delayed
-
-
+        input_buffer.append(indata.flatten())
+        tap.advance(frames)
+        delayed = tap.get_samples(frames)
+        outdata[:] = np.column_stack((delayed, delayed))
 
     with sd.Stream(device=(input_device, output_device),
                    channels=(in_channels, out_channels),
