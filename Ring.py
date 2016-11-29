@@ -52,6 +52,12 @@ class Ring(object):
 
     def append(self, items):
         count = len(items)
+
+        for position in self.__positions:
+            if position.valid_ring_space < count:
+                position.valid = False
+                raise RingPointerWarning('Pointer broken')
+
         # In the most common case, we don't have to loop around
         if self.__index + count <= self.__length:
             self.__content[self.__index:self.__index + count] = items
@@ -103,7 +109,10 @@ class RingPosition(object):
         """ advance the index by <amount> samples """
         ring = self.get_ring()
         if amount > len(ring):
-            raise IndexError('advance amount larger than ring buffer size')
+            raise RingPointerWarning('advance amount larger than ring buffer size')
+        if amount >= self.valid_buffer_length:
+            self.valid = False
+            raise RingPointerWarning('amount ({0}) exceeded valid_buffer_length'.format(amount))
 
         self.__ring_index += amount
         self.__ring_index %= len(ring)
@@ -111,7 +120,7 @@ class RingPosition(object):
     def get_samples(self, number):
         if number > self.valid_buffer_length or number < 0:
             print('get_sample argument out of range')
-            raise IndexError('get_sample agrument out of range')
+            raise BufferError('get_sample agrument out of range')
 
         ring = self.get_ring()
         first_part = ring.raw[self.index:self.index + number]
@@ -158,6 +167,8 @@ class RingPosition(object):
         self.__ring_index = i
         self.valid = True
 
+class RingPointerWarning(UserWarning):
+    pass
 
 def test():
     a = Ring(4)
@@ -204,11 +215,37 @@ def test():
     p.advance(2)
     assert np.all(p.get_samples(2) == [2, 3])
     a.append([4, 5, 6, 7, 8])
+
+
     p.advance(4)
+
     assert np.all(p.get_samples(2) == [6, 7])
     # test wraping
     assert np.all(p.get_samples(3) == [6, 7, 8])
+    p.advance(2)
+    assert(p.valid)
+    assert(a.raw[p.index] == 8)
 
+    # Ensure that we throw when breaking a ring pointer
+    a = Ring(8)
+    a.append(np.arange(8))
+    p = a.create_position()
+    assert(p.get_samples(1)[0] == 7)
+    # pointing to the last item in the sample
+    a.append(np.arange(7))
+    try:
+        a.append([99])
+    except RingPointerWarning as e:
+        pass
+    assert p.valid is False
+
+    a = Ring(8)
+    p = a.create_position()
+    try:
+        p.advance(2)
+    except RingPointerWarning as e:
+        pass
+    assert p.valid is False
     return a, p
 
 
