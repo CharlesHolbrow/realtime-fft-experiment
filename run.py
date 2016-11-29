@@ -28,8 +28,6 @@ latency = None
 
 
 try:
-    import sounddevice as sd
-
     cumulated_status = sd.CallbackFlags()
     size = 128 * 1024
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
@@ -44,15 +42,22 @@ try:
         global shape
         global ring
         cumulated_status |= status
-        # outdata[:] = indata
+
+        # np.shape(indata) will equal (frames, in_channels) where frames is the
+        # number of samples provided by sounddevice, and in_channels is the
+        # number of input channels. 
 
         if shape != np.shape(indata):
             shape = np.shape(indata)
             print 'input shape: {0}'.format(np.shape(indata))
 
-        input_buffer.append(indata.flatten())
+        audio_input = indata.flatten()
+        input_buffer.append(audio_input)
         tap.advance(frames)
         delayed = tap.get_samples(frames)
+
+        
+        
         outdata[:] = np.column_stack((delayed, delayed))
 
     with sd.Stream(device=(input_device, output_device),
