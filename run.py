@@ -6,6 +6,7 @@ from scipy.fftpack import fft, ifft, fftshift
 import logging
 
 from Ring import Ring
+from Stretcher import Stretcher
 
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
@@ -22,30 +23,33 @@ dtype = None
 # samplerate (float): sampleing rate. I'm not sure why this is float and not int
 samplerate = 44100
 # blocksize (int): block size
-blocksize = 128
+blocksize = 32768
 # latency (float): latency in seconds
 latency = None
 
 
+
 try:
     cumulated_status = sd.CallbackFlags()
-    size = 128 * 1024
+    size = 128 * 1024 * 60
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
-    input_buffer = Ring(size)
-    tap = input_buffer.create_position()
-    tap.index = input_buffer.index_of(-22050 + 1)
-    print 'valid tap buffer length: {0}'.format(tap.valid_buffer_length)
+    input_buffer  = Ring(size)
+    tap           = input_buffer.create_position()
+    stretcher     = Stretcher(tap)
+    tap.index     = input_buffer.index_of(-11025 + 1)
+    print 'valid tap buffer length in seconds: {0}'.format(float(tap.valid_buffer_length) / samplerate)
     shape = (0,0)
 
     def callback(indata, outdata, frames, time, status):
         global cumulated_status
         global shape
         global ring
+        global stretcher
         cumulated_status |= status
 
         # np.shape(indata) will equal (frames, in_channels) where frames is the
         # number of samples provided by sounddevice, and in_channels is the
-        # number of input channels. 
+        # number of input channels.
 
         if shape != np.shape(indata):
             shape = np.shape(indata)
@@ -53,12 +57,13 @@ try:
 
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
-        tap.advance(frames)
-        delayed = tap.get_samples(frames)
 
-        
-        
-        outdata[:] = np.column_stack((delayed, delayed))
+        results = np.concatenate([stretcher.step() for i in range(2)])
+        outdata[:] = np.column_stack((results, results))
+
+        # tap.advance(frames)
+        # delayed = tap.get_samples(frames)
+        # outdata[:] = np.column_stack((delayed, delayed))
 
     with sd.Stream(device=(input_device, output_device),
                    channels=(in_channels, out_channels),
@@ -79,6 +84,7 @@ except KeyboardInterrupt:
     print('KeyboardInterrupt')
     sys.exit()
 except Exception as e:
+    print 'error caught:'
     print type(e).__name__ + ': ' + str(e)
     sys.exit()
 

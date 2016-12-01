@@ -13,7 +13,7 @@ hinv_sqrt2=(1+sqrt(0.5))*0.5
 hinv_buf=hinv_sqrt2-(1.0-hinv_sqrt2)*cos(arange(half_windowsize,dtype='float')*2.0*pi/half_windowsize)
 
 buf = cos((pi * 2 * 3.5 * arange(windowsize) / windowsize))
-# buf *= window
+buf *= window
 # buf = concatenate((buf[half_windowsize:], buf[:half_windowsize]))
 
 plt.plot(buf); plt.show()
