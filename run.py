@@ -34,7 +34,7 @@ try:
     size = 128 * 1024 * 60
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
     input_buffer  = Ring(size)
-    tap           = input_buffer.create_position()
+    tap           = input_buffer.create_tap()
     stretcher     = Stretcher(tap)
     tap.index     = input_buffer.index_of(-11025 + 1)
     print 'valid tap buffer length in seconds: {0}'.format(float(tap.valid_buffer_length) / samplerate)
@@ -58,7 +58,7 @@ try:
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
 
-        results = np.concatenate([stretcher.step() for i in range(2)])
+        results = np.concatenate([stretcher.step() for i in range(4)])
         outdata[:] = np.column_stack((results, results))
 
         # tap.advance(frames)

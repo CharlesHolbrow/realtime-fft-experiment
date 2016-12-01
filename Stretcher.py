@@ -2,12 +2,12 @@ import numpy as np
 from numpy import fft
 
 # Parameters for stretching
-windowsize  = 32768
+windowsize  = 32768 / 2
 half_windowsize = windowsize / 2
-stretch     = 8
+stretch     = 4
 source_hopsize = int(np.floor(windowsize * 0.5 / stretch))
 
-print 'hopsize: {0}'.format(source_hopsize)
+print 'hopsize: {0} ({1} seconds), {2} hz'.format(source_hopsize, source_hopsize / 44100., 44100. / source_hopsize)
 
 # The hann window function and tremelo compensation (hinv_buf) are copied
 # directly from paulstretch
@@ -38,12 +38,14 @@ class Stretcher(object):
         mX = np.abs(fft.rfft(audio_in * window))
         # Randomise the phases for each bin between 0 and 2pi
         pX = np.random.uniform(0, 2 * np.pi, len(mX)) * 1j
-        # Rotate each mX by a complex exponential to get cartesian style
-        # real + imag coords
+        # use e^x to Convert our array of random values from 0 to 2pi to an
+        # array of cartesian style real*imag vales distributed around the unit
+        # circle. Then multiply with magnitude spectrum to rotate the magnitude
+        # spectrum around the unit circle. 
         freq = mX * np.exp(pX)
-        # Get the audio samples with random phase. When we randomized the
+        # Get the audio samples with randomized phase. When we randomized the
         # phase, we changed the waveform so it no longer starts and ends at
-        # zero. Now re-window the audio. 
+        # zero. Now re-window the audio.
         audio_phased = fft.irfft(freq) * window
         hs = half_windowsize
         audio_output = audio_phased[0:hs] + self.previous[hs:windowsize]

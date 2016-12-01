@@ -9,7 +9,7 @@ class Ring(object):
         self.__index = 0 # where we will place the next sample (not the last sample placed)
         self.__content = np.zeros(length, dtype)
         self.__length = length
-        self.__positions = []
+        self.__taps = []
 
     def __setitem__(self, key, value):
         if key.step != None or key.step != 1:
@@ -53,9 +53,9 @@ class Ring(object):
     def append(self, items):
         count = len(items)
 
-        for position in self.__positions:
-            if position.valid_ring_space < count:
-                position.valid = False
+        for tap in self.__taps:
+            if tap.valid_ring_space < count:
+                tap.valid = False
                 raise RingPointerWarning('Pointer broken')
 
         # In the most common case, we don't have to loop around
@@ -77,10 +77,10 @@ class Ring(object):
         self.__index += count
         self.__index %= self.__length
 
-    def create_position(self):
-        position = RingPosition(self)
-        self.__positions.append(position)
-        return position
+    def create_tap(self):
+        tap = RingTap(self)
+        self.__taps.append(tap)
+        return tap
 
     @property
     def raw(self):
@@ -92,7 +92,7 @@ class Ring(object):
 
 
 
-class RingPosition(object):
+class RingTap(object):
     def __init__(self, ring):
         if not isinstance(ring, Ring):
             raise TypeError('RingPosition requires an instance of Ring')
@@ -150,7 +150,7 @@ class RingPosition(object):
 
     @property
     def valid_ring_space(self):
-        """ How many samples may be appended to the ring without invalidating this position"""
+        """ How many samples may be appended to the ring without invalidating this tap"""
         ring = self.get_ring()
         return len(ring) - self.valid_buffer_length
 
@@ -202,7 +202,7 @@ def test():
 
     # test RingPosition
     a = Ring(8)
-    p = a.create_position()
+    p = a.create_tap()
 
     assert p.valid_buffer_length == 1
     a.append(np.arange(4))
@@ -229,7 +229,7 @@ def test():
     # Ensure that we throw when breaking a ring pointer
     a = Ring(8)
     a.append(np.arange(8))
-    p = a.create_position()
+    p = a.create_tap()
     assert(p.get_samples(1)[0] == 7)
     # pointing to the last item in the sample
     a.append(np.arange(7))
@@ -240,7 +240,7 @@ def test():
     assert p.valid is False
 
     a = Ring(8)
-    p = a.create_position()
+    p = a.create_tap()
     try:
         p.advance(2)
     except RingPointerWarning as e:
