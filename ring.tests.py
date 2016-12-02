@@ -1,7 +1,6 @@
 import numpy as np
 
-from Ring import Ring
-from Ring import RingPointerWarning
+from ring import Ring, RingPointerWarning
 
 def test():
     a = Ring(4)

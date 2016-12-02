@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft, fftshift
 import logging
 
-from Ring import Ring
-from Stretcher import Stretcher
+from ring import Ring
+from stretcher import Stretcher
 
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream

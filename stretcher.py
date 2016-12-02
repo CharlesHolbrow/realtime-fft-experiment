@@ -1,6 +1,8 @@
 import numpy as np
 from numpy import fft
 
+from ring import Ring
+
 # Parameters for stretching
 windowsize  = 32768 / 2
 half_windowsize = windowsize / 2
