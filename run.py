@@ -58,7 +58,7 @@ try:
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
 
-        results = np.concatenate([stretcher.step(16384) for i in range(4)])
+        results = np.concatenate([stretcher.step(4096) for i in range(16)])
         outdata[:] = np.column_stack((results, results))
 
         # tap.advance(frames)
