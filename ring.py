@@ -77,6 +77,9 @@ class Ring(object):
         self.__index += count
         self.__index %= self.__length
 
+    def rewind(self, amount):
+        self.__index = (self.__index - amount) % len(self)
+
     def create_tap(self):
         tap = RingTap(self)
         self.__taps.append(tap)

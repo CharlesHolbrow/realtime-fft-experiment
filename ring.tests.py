@@ -80,5 +80,14 @@ def test():
     assert p.valid is False
     return a, p
 
+    # test rewinding pointer
+    a = Ring(5)
+    a.append(np.arange(2))
+    assert a.pointer == 2
+    a.rewind(1)
+    assert a.p  == 1
+    a.rewind(3)
+    assert a.p == 3
+
 if __name__ == '__main__':
     test()
