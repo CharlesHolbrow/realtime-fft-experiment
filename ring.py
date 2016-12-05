@@ -176,7 +176,8 @@ class AnnotatedRing(Ring):
     def __init__(self, num_blocks, blocksize=512, dtype=None):
         super(AnnotatedRing, self).__init__(num_blocks * blocksize, dtype=dtype)
         self.__blocksize = int(blocksize)
-        self.__energy = np.zeros(num_blocks)
+        self.__energy    = np.zeros(num_blocks)
+        self.__notes     = nparray([{}] * num_blocks)
 
     def append(self, items):
         # How far in to the most recent boundary is the index
@@ -194,6 +195,9 @@ class AnnotatedRing(Ring):
             ((first_boundary_index + i) % len(self.__energy))
             for i in range(boundaries_crossed)]
 
+        if len(boundary_indices) == 0:
+            return 0
+
         # The indices in our raw content where our bondaries start
         boundary_start_indices = [i * self.__blocksize for i in boundary_indices]
 
@@ -202,17 +206,24 @@ class AnnotatedRing(Ring):
         # reference (not a copy).
         regions = [self.raw[i:i+self.__blocksize] for i in boundary_start_indices]
 
-        # Convert the arrays to energy levels in DB. Remember that we can't
-        # take the log10 of 0, so we add 'eps' (an insignificnatly small
-        # number) to each value before converting to db
-        energy_db = [10 * np.log10(eps + np.sum(np.abs(r))) for r in regions]
+        # Convert the arrays to energy levels in DB.
+        energy = [np.sum(np.abs(r) ** 2) for r in regions]
 
-        sys.stdout.write("%6.3f \r" % np.mean(energy_db))
+        # Remember that we can't take the log10 of 0, so we add 'eps' (an
+        # insignificnatly small number) to each value before converting to db
+        sys.stdout.write("{: >9.3f} \r".format(np.mean(10 * np.log10(eps + energy))))
         sys.stdout.flush()
 
-        self.__energy[boundary_indices] = energy_db
+        self.__energy[boundary_indices] = energy
 
         return boundaries_crossed
+
+    def __annotate(self, indices):
+        """ Add annotations to indices supplied by the <indices> array
+
+        Used only internally to update the .__notes numpy array
+        """
+        pass
 
     def recent_energy(self, number=1):
         start = ((self.index - 1) % len(self)) / self.__blocksize
