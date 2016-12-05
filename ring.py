@@ -1,5 +1,7 @@
 import numpy as np
 import weakref
+import sys
+eps = np.finfo(float).eps
 
 class Ring(object):
     """
@@ -12,8 +14,7 @@ class Ring(object):
         self.__taps = []
 
     def __setitem__(self, key, value):
-        if key.step != None or key.step != 1:
-            raise TypeError('Ring does not support stepped slices')
+        raise TypeError('Ring only supports assignment through the .append method')
 
     def __getitem__(self, key):
         if type(key) == int:
@@ -169,6 +170,61 @@ class RingTap(object):
             raise IndexError('index out of range')
         self.__ring_index = i
         self.valid = True
+
+
+class AnnotatedRing(Ring):
+    def __init__(self, num_blocks, blocksize=512, dtype=None):
+        super(AnnotatedRing, self).__init__(num_blocks * blocksize, dtype=dtype)
+        self.__blocksize = int(blocksize)
+        self.__energy = np.zeros(num_blocks)
+
+    def append(self, items):
+        # How far in to the most recent boundary is the index
+        boundary_distance = self.index % self.__blocksize
+        boundaries_crossed = (boundary_distance + len(items)) / self.__blocksize
+
+        # At what index does the first boundary start?
+        first_boundary_index = int(self.index / self.__blocksize)
+
+        # Now we can actually append the items
+        super(AnnotatedRing, self).append(items)
+        # Create a python list of of the indicies of self.__energy that we will
+        # update. For example if num_blocks==4, this might be [3, 0, 1]
+        boundary_indices = [
+            ((first_boundary_index + i) % len(self.__energy))
+            for i in range(boundaries_crossed)]
+
+        # The indices in our raw content where our bondaries start
+        boundary_start_indices = [i * self.__blocksize for i in boundary_indices]
+
+        # A python array of the numpy arrays, each containing a region of the
+        # raw content. Note that indexing numpy arrays in this way creates a
+        # reference (not a copy).
+        regions = [self.raw[i:i+self.__blocksize] for i in boundary_start_indices]
+
+        # Convert the arrays to energy levels in DB. Remember that we can't
+        # take the log10 of 0, so we add 'eps' (an insignificnatly small
+        # number) to each value before converting to db
+        energy_db = [10 * np.log10(eps + np.sum(np.abs(r))) for r in regions]
+
+        sys.stdout.write("%6.3f \r" % np.mean(energy_db))
+        sys.stdout.flush()
+
+        self.__energy[boundary_indices] = energy_db
+
+        return boundaries_crossed
+
+    def recent_energy(self, number=1):
+        start = ((self.index - 1) % len(self)) / self.__blocksize
+        stop = start - number
+        indices = range(start, stop, -1)
+        return self.__energy[indices][::-1]
+
+
+
+
+
+
 
 class RingPointerWarning(UserWarning):
     pass

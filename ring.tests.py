@@ -1,6 +1,30 @@
 import numpy as np
 
-from ring import Ring, RingPointerWarning
+from ring import Ring, RingPointerWarning, AnnotatedRing
+
+def test_annotated_ring():
+    a = AnnotatedRing(2, 4)
+    assert len(a) == 8
+
+    # return the number of boundaries crossed
+    assert a.append(np.arange(3)) == 0
+    assert a.append(np.arange(1)) == 1
+    assert a.append([1]) == 0
+    assert a.append(np.arange(7)) == 2
+    assert a.append(np.arange(8)) == 2
+
+    a = AnnotatedRing(3, 4)
+    a.append([2, 2, 2, 2])
+    assert np.all(a.recent_energy(1) == [16])
+    a.append([3, 3, 3, 3])
+    assert np.all(a.recent_energy(2) == [16, 36])
+    a.append(np.ones(4))
+    assert np.all(a.recent_energy(3) == [16, 36, 4])
+    a.append([5, 5, 5, 5])
+    assert np.all(a.recent_energy(2) == [4, 100])
+
+
+
 
 def test():
     a = Ring(4)
@@ -91,3 +115,5 @@ def test():
 
 if __name__ == '__main__':
     test()
+    test_annotated_ring()
+
