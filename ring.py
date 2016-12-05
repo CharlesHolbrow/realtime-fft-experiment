@@ -175,9 +175,16 @@ class RingTap(object):
 class AnnotatedRing(Ring):
     def __init__(self, num_blocks, blocksize=512, dtype=None):
         super(AnnotatedRing, self).__init__(num_blocks * blocksize, dtype=dtype)
-        self.__blocksize = int(blocksize)
-        self.__energy    = np.zeros(num_blocks)
-        self.__notes     = nparray([{}] * num_blocks)
+        self.__num_blocks = num_blocks
+        self.__blocksize  = int(blocksize)
+        self.__energy     = np.zeros(num_blocks)
+        self.__transients = np.zeros(num_blocks, dtype='bool')
+
+        # Space to store rfft of each block
+        # self.__spectrum  = np.zeros((num_blocks, blocksize), dtype='complex128')
+
+        # Difference in db between this block and the one before it
+        self.__diff_db = np.zeros(num_blocks)
 
     def append(self, items):
         # How far in to the most recent boundary is the index
@@ -189,47 +196,84 @@ class AnnotatedRing(Ring):
 
         # Now we can actually append the items
         super(AnnotatedRing, self).append(items)
+
         # Create a python list of of the indicies of self.__energy that we will
         # update. For example if num_blocks==4, this might be [3, 0, 1]
-        boundary_indices = [
+        block_indices = [
             ((first_boundary_index + i) % len(self.__energy))
             for i in range(boundaries_crossed)]
 
-        if len(boundary_indices) == 0:
+        if len(block_indices) == 0:
             return 0
 
+        self.__annotate(block_indices)
+
+        return boundaries_crossed
+
+    def __annotate(self, block_indices):
+        """ Add annotations to block indices supplied by the <indices> array
+
+        Used only internally to analyze recently added blocks.
+
+        block_indices refers to the indices of blocks where we store our metadata
+
+        Two examples:
+
+        1. if our blocksize is 512, block_index 0 would refer to the
+        first 512 samples in the self.raw array
+
+        2. For example if num_blocks==4, this might be [3, 0, 1]
+
+        __annotate assumes that the samples for block_indices are written to
+        self.raw when it is called
+        """
+
         # The indices in our raw content where our bondaries start
-        boundary_start_indices = [i * self.__blocksize for i in boundary_indices]
+        raw_indices = [i * self.__blocksize for i in block_indices]
 
         # A python array of the numpy arrays, each containing a region of the
         # raw content. Note that indexing numpy arrays in this way creates a
         # reference (not a copy).
-        regions = [self.raw[i:i+self.__blocksize] for i in boundary_start_indices]
+        regions = [self.raw[i:i+self.__blocksize] for i in raw_indices]
 
-        # Convert the arrays to energy levels in DB.
+        # Convert the arrays to linear (not dB) energy
         energy = [np.sum(np.abs(r) ** 2) for r in regions]
+        self.__energy[block_indices] = energy
 
-        # Remember that we can't take the log10 of 0, so we add 'eps' (an
-        # insignificnatly small number) to each value before converting to db
-        sys.stdout.write("{: >9.3f} \r".format(np.mean(10 * np.log10(eps + energy))))
+        # We will compare each block with the block before it.
+        # CAREFUL: iterator indexes self.__energy, not local energy variable
+        iterator = [(self.__energy[i], self.__energy[i-1]) for i in block_indices]
+        diffs =[10. * np.log10((eps + i) / (eps + p)) for i, p in iterator]
+
+        self.__diff_db[block_indices] = diffs
+
+        # Are there any transients?
+        transients = np.array(diffs) > 20.
+        self.__transients[block_indices] = transients
+
+        sys.stdout.write("{: >9.3f} {: >9.3f} \r".format(np.max(diffs), np.min(diffs)))
         sys.stdout.flush()
 
-        self.__energy[boundary_indices] = energy
+        if np.any(transients):
+            print 'Transients: {0} \n'.format(np.sum(transients))
 
-        return boundaries_crossed
 
-    def __annotate(self, indices):
-        """ Add annotations to indices supplied by the <indices> array
+    @property 
+    def previous_block_index(self):
+        return ((self.index - 1) % len(self)) / self.__blocksize
 
-        Used only internally to update the .__notes numpy array
-        """
-        pass
+    def recent_block_indices(self, number):
+        start = self.previous_block_index
+        stop = start - number
+        return range(start, stop, -1)[::-1]
+
+    def recent_diff(self, number):
+        indices = self.recent_block_indices(number)
+        return self.__diff_db[indices]
 
     def recent_energy(self, number=1):
-        start = ((self.index - 1) % len(self)) / self.__blocksize
-        stop = start - number
-        indices = range(start, stop, -1)
-        return self.__energy[indices][::-1]
+        indices = self.recent_block_indices(number)
+        return self.__energy[indices]
 
 
 

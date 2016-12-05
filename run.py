@@ -36,7 +36,7 @@ try:
     input_buffer  = AnnotatedRing(size / 512, 512)
     tap           = input_buffer.create_tap()
     stretcher     = Stretcher(tap)
-    tap.index     = input_buffer.index_of(-11025 + 1)
+    tap.index     = input_buffer.index_of(-1024 + 1)
     print 'valid tap buffer length in seconds: {0}'.format(float(tap.valid_buffer_length) / samplerate)
     shape           = (0,0)
     frames_elapsed  = 0
