@@ -319,6 +319,7 @@ class AnnotatedRingTap(RingTap):
         index     = int(self.index)
         return (index // blocksize) % annotated_ring.num_blocks
 
+    @property
     def valid_indices(self):
         annotated_ring = self.get_ring()
         tap_block_index = self.block_index
