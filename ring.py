@@ -112,6 +112,8 @@ class RingTap(object):
         # note that the __ring_index is a index OF the ring.__content
         self.index = self.get_ring().index_of(0)
 
+        self.__samples_elapsed = 0
+
     def advance(self, amount):
         """ advance the index by <amount> samples """
         ring = self.get_ring()
@@ -121,6 +123,7 @@ class RingTap(object):
             self.valid = False
             raise RingPointerWarning('amount ({0}) exceeded valid_buffer_length'.format(amount))
 
+        self.__samples_elapsed += amount
         self.__ring_index += amount
         self.__ring_index %= len(ring)
 
@@ -173,6 +176,11 @@ class RingTap(object):
             raise IndexError('index out of range')
         self.__ring_index = i
         self.valid = True
+        self.__samples_elapsed = 0
+
+    @property
+    def samples_elapsed(self):
+        return self.__samples_elapsed
 
 
 class AnnotatedRing(Ring):
@@ -269,8 +277,8 @@ class AnnotatedRing(Ring):
         transients = np.array(diffs) > 20.
         self.__transients[block_indices] = transients
 
-        sys.stdout.write("{: >9.3f} {: >9.3f} \r".format(np.max(diffs), np.min(diffs)))
-        sys.stdout.flush()
+        # sys.stdout.write("{: >9.3f} {: >9.3f} \r".format(np.max(diffs), np.min(diffs)))
+        # sys.stdout.flush()
 
         if np.any(transients):
             print 'Transients: {0} \n'.format(np.sum(transients))
@@ -309,8 +317,39 @@ class AnnotatedRing(Ring):
         indices = self.recent_block_indices(number)
         return self.__energy[indices]
 
+    @property
+    def transients(self):
+        return self.__transients
+
 
 class AnnotatedRingTap(RingTap):
+
+    @property
+    def samples_to_next_transient(self):
+        annotated_ring    = self.get_ring()
+        blocksize         = int(annotated_ring.blocksize)
+        valid_indices     = self.valid_indices
+        valid_transients  = annotated_ring.transients[valid_indices]
+        samples_to_border = blocksize - self.position_in_block
+
+        if len(valid_transients) == 0:
+            return None
+        elif valid_transients[0]:
+            return 0
+        else:
+            transient_indices = np.nonzero(valid_transients)[0]
+            if len(transient_indices) == 0:
+                return None
+            else:
+                return samples_to_border + ((transient_indices[0]-1) * blocksize)
+
+    @property
+    def position_in_block(self):
+        annotated_ring = self.get_ring()
+        blocksize      = int(annotated_ring.blocksize)
+        index          = int(self.index)
+        return index % blocksize
+
     @property
     def block_index(self):
         """ get the block_index of the block where our tap is currently """
@@ -321,6 +360,11 @@ class AnnotatedRingTap(RingTap):
 
     @property
     def valid_indices(self):
+        """ Get the indices of valid block indices. These will begin with the
+        block index of the block that the tap's raw index is currently in. It
+        ends with the updated block index (which will be just before the raw
+        ring index)
+        """
         annotated_ring = self.get_ring()
         tap_block_index = self.block_index
         ring_block_index = annotated_ring.previous_updated_block_index

@@ -72,6 +72,10 @@ try:
 
         # sys.stdout.write('window: {0} seconds elapsed: {1}. \r'.format(windowsize, seconds_elapsed))
         # sys.stdout.flush()
+        samples_to_next_transient = tap.samples_to_next_transient
+        if samples_to_next_transient is not None:
+            sys.stdout.write("{0} \r".format(float(samples_to_next_transient) / samplerate))
+            sys.stdout.flush()
 
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
