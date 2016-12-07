@@ -83,8 +83,11 @@ class Ring(object):
 
     def create_tap(self):
         tap = RingTap(self)
-        self.__taps.append(tap)
+        self.add_tap(tap)
         return tap
+
+    def add_tap(self, tap):
+        self.__taps.append(tap)
 
     @property
     def raw(self):
@@ -138,7 +141,7 @@ class RingTap(object):
     def valid_buffer_length(self):
         """ How many samples behind the 'seam' are we?
 
-        For example if 'C' is our current __ring_index, and 'G' is ring[0] (the
+        For example if 'C' is our current self.index, and 'E' is ring[0] (the
         last sample appended), this will return 3. Note that in this example,
         ring.__index would be pointing to f
 
@@ -173,12 +176,27 @@ class RingTap(object):
 
 
 class AnnotatedRing(Ring):
+    """ Annotated Ring stores audio data in a ring buffer like Ring, but it
+    also stores lower resolution metadata about the audio. The metadata is
+    calculated and added in calls to self.append
+
+    The resolution of the metadata is determined by the blocksize, which should
+    be an integer number of samples. The length of the buffer is defined as the
+    <num_blocks> * <blocksize>.
+
+    Metadata is stored in arrays of size <num_blocks>. A block_index refers to
+    the index of one of these lower resolution arrays that are in parallel
+    to the audio arrays.
+    """
     def __init__(self, num_blocks, blocksize=512, dtype=None):
         super(AnnotatedRing, self).__init__(num_blocks * blocksize, dtype=dtype)
         self.__num_blocks = num_blocks
         self.__blocksize  = int(blocksize)
         self.__energy     = np.zeros(num_blocks)
         self.__transients = np.zeros(num_blocks, dtype='bool')
+
+        if num_blocks <= 1:
+            raise Exception('Annotated Ring requires two or more blocks')
 
         # Space to store rfft of each block
         # self.__spectrum  = np.zeros((num_blocks, blocksize), dtype='complex128')
@@ -257,13 +275,29 @@ class AnnotatedRing(Ring):
         if np.any(transients):
             print 'Transients: {0} \n'.format(np.sum(transients))
 
+    def create_tap(self):
+        tap = AnnotatedRingTap(self)
+        self.add_tap(tap)
+        return tap
 
-    @property 
-    def previous_block_index(self):
-        return ((self.index - 1) % len(self)) / self.__blocksize
+    @property
+    def blocksize(self):
+        return self.__blocksize
+
+    @property
+    def num_blocks(self):
+        return self.__num_blocks
+
+    @property
+    def previous_updated_block_index(self):
+        """ The "low resolution" block_index that was most recently updated
+        """
+        i  = int(self.index)
+        bs = int(self.__blocksize)
+        return ((i // bs) -1) % self.__num_blocks
 
     def recent_block_indices(self, number):
-        start = self.previous_block_index
+        start = self.previous_updated_block_index
         stop = start - number
         return range(start, stop, -1)[::-1]
 
@@ -276,10 +310,35 @@ class AnnotatedRing(Ring):
         return self.__energy[indices]
 
 
+class AnnotatedRingTap(RingTap):
+    @property
+    def block_index(self):
+        """ get the block_index of the block where our tap is currently """
+        annotated_ring = self.get_ring()
+        blocksize = int(annotated_ring.blocksize)
+        index     = int(self.index)
+        return (index // blocksize) % annotated_ring.num_blocks
 
+    def valid_indices(self):
+        annotated_ring = self.get_ring()
+        tap_block_index = self.block_index
+        ring_block_index = annotated_ring.previous_updated_block_index
+        num_blocks = annotated_ring.num_blocks
 
+        if not self.valid:
+            return np.array([])
 
+        # If both indices are in the same block, the ring index must be in the
+        # next block.
+        if tap_block_index == ring_block_index:
+            return np.array([tap_block_index])
 
+        # the valid buffer wraps around the ring
+        elif tap_block_index > ring_block_index:
+            return np.arange(tap_block_index, ring_block_index + 1 + num_blocks) % num_blocks
+
+        elif tap_block_index < ring_block_index:
+            return np.arange(tap_block_index, ring_block_index + 1)
 
 class RingPointerWarning(UserWarning):
     pass

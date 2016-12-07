@@ -23,7 +23,7 @@ dtype = None
 # samplerate (float): sampleing rate. I'm not sure why this is float and not int
 samplerate = 44100
 # blocksize (int): block size
-blocksize = 2**14
+blocksize = 2**13
 # latency (float): latency in seconds
 latency = None
 
@@ -36,7 +36,7 @@ try:
     input_buffer  = AnnotatedRing(size / 512, 512)
     tap           = input_buffer.create_tap()
     stretcher     = Stretcher(tap)
-    tap.index     = input_buffer.index_of(-1024 + 1)
+    tap.index     = input_buffer.index_of(-8392 + 1)
     print 'valid tap buffer length in seconds: {0}'.format(float(tap.valid_buffer_length) / samplerate)
     shape           = (0,0)
     frames_elapsed  = 0
@@ -76,7 +76,7 @@ try:
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
 
-        results = np.concatenate([stretcher.step(2**14, 8) for i in range(2)])
+        results = np.concatenate([stretcher.step(2**14, 8) for i in range(1)])
         outdata[:] = np.column_stack((results, results))
 
 

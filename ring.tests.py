@@ -23,6 +23,20 @@ def test_annotated_ring():
     a.append([5, 5, 5, 5])
     assert np.all(a.recent_energy(2) == [4, 100])
 
+    # verify when we append less than a full block
+    a.append([2, 2])
+    assert np.all(a.recent_energy(2) == [4, 100])
+    a.append([2, 2])
+    assert np.all(a.recent_energy(2) == [100, 16])
+
+    # AnnotatedRingTap
+    a = AnnotatedRing(3, 4)
+    t = a.create_tap()
+    assert t.block_index == 2
+    a.append(np.arange(11))
+    t.advance(1)
+    assert t.block_index == 0
+
 
 
 

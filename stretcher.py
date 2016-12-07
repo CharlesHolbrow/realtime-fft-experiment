@@ -56,7 +56,7 @@ class Stretcher(object):
         self.__buffer   = Ring(2**16)
         # self.__out_tap  = self.__buffer.create_tap()
 
-    def step(self, windowsize, stretch_amount = 4):
+    def step(self, windowsize, stretch_amount = 4, gain = 1.):
         """
         Run paulstretch once from the current location of the tap point
         """
@@ -103,4 +103,4 @@ class Stretcher(object):
         # append the audio output to our output buffer
         self.__buffer.append(audio_phased)
 
-        return audio_phased[:sw.half]
+        return audio_phased[:sw.half] * gain
