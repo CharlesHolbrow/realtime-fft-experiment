@@ -8,10 +8,10 @@ class Ring(object):
 
     """
     def __init__(self, length, dtype=None):
-        self.__index = 0 # where we will place the next sample (not the last sample placed)
+        self.__index   = 0 # where we will place the next sample (not the last sample placed)
         self.__content = np.zeros(length, dtype)
-        self.__length = length
-        self.__taps = []
+        self.__length  = length
+        self.__taps    = []
 
     def __setitem__(self, key, value):
         raise TypeError('Ring only supports assignment through the .append method')
@@ -307,7 +307,7 @@ class AnnotatedRing(Ring):
     def recent_block_indices(self, number):
         start = self.previous_updated_block_index
         stop = start - number
-        return range(start, stop, -1)[::-1]
+        return range(start, stop, -1)
 
     def recent_diff(self, number):
         indices = self.recent_block_indices(number)
@@ -316,6 +316,23 @@ class AnnotatedRing(Ring):
     def recent_energy(self, number=1):
         indices = self.recent_block_indices(number)
         return self.__energy[indices]
+
+    def recent_transients(self, number):
+        indices = self.recent_block_indices(number)
+        return self.__transients[indices]
+
+    def last_transient_block_index(self, number_to_check=None):
+        """ Get the block index of the most recent transient. What we probably
+        actually want is the distance of the last transient from the index.
+        """
+        if number_to_check is None:
+            number_to_check = self.num_blocks
+        transients = self.recent_transients(number_to_check)
+        transient_indices = np.nonzero(transients)[0]
+        if len(transient_indices) is 0:
+            return None
+        else:
+            return transient_indices[-1]
 
     @property
     def transients(self):

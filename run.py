@@ -12,9 +12,9 @@ from stretcher import Stretcher
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
 
 # input_device (int or str): input device id
-input_device = None
+input_device = 3
 # output_device (int or str): output device id
-output_device = None
+output_device = 3
 # channels (int): number of channels. is this input or output?
 in_channels = 1
 out_channels = 2
@@ -66,21 +66,25 @@ try:
         frames_elapsed += 1
 
         # raise 2 to this power to get windowsize
-        exponent = 15
+        exponent = 14
         windowsize = 2 ** exponent
         number_to_fill = blocksize / (windowsize / 2)
 
         # sys.stdout.write('window: {0} seconds elapsed: {1}. \r'.format(windowsize, seconds_elapsed))
         # sys.stdout.flush()
-        samples_to_next_transient = tap.samples_to_next_transient
-        if samples_to_next_transient is not None:
-            sys.stdout.write("{0} \r".format(float(samples_to_next_transient) / samplerate))
-            sys.stdout.flush()
 
         audio_input = indata.flatten()
         input_buffer.append(audio_input)
 
-        results = np.concatenate([stretcher.step(2**14, 8) for i in range(1)])
+        samples_to_next_transient = tap.samples_to_next_transient
+        if tap.samples_elapsed > 1 * samplerate:
+            if samples_to_next_transient <= len(audio_input):
+                pass
+                # tap.index = input_buffer.index_of(-22050 + 1)
+
+        # sys.stdout.write('{0} \r'.format(ring.)); sys.stdout.flush()
+
+        results = np.concatenate([stretcher.step(windowsize, 8) for i in range(number_to_fill)])
         outdata[:] = np.column_stack((results, results))
 
 
