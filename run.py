@@ -12,9 +12,9 @@ from stretcher import Stretcher
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
 
 # input_device (int or str): input device id
-input_device = 3
+input_device = None
 # output_device (int or str): output device id
-output_device = 3
+output_device = None
 # channels (int): number of channels. is this input or output?
 in_channels = 1
 out_channels = 2
@@ -31,7 +31,7 @@ latency = None
 
 try:
     cumulated_status = sd.CallbackFlags()
-    size = 128 * 1024 * 120
+    size = 128 * 1024 * 120 * 4
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
     input_buffer  = AnnotatedRing(size / 512, 512)
     tap           = input_buffer.create_tap()
