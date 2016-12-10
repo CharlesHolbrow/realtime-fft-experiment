@@ -17,17 +17,17 @@ def test_annotated_ring():
     a.append([2, 2, 2, 2])
     assert np.all(a.recent_energy(1) == [16])
     a.append([3, 3, 3, 3])
-    assert np.all(a.recent_energy(2) == [16, 36])
+    assert np.all(a.recent_energy(2) == [36, 16])
     a.append(np.ones(4))
-    assert np.all(a.recent_energy(3) == [16, 36, 4])
+    assert np.all(a.recent_energy(3) == [4, 36, 16])
     a.append([5, 5, 5, 5])
-    assert np.all(a.recent_energy(2) == [4, 100])
+    assert np.all(a.recent_energy(2) == [100, 4])
 
     # verify when we append less than a full block
     a.append([2, 2])
-    assert np.all(a.recent_energy(2) == [4, 100])
+    assert np.all(a.recent_energy(2) == [100, 4])
     a.append([2, 2])
-    assert np.all(a.recent_energy(2) == [100, 16])
+    assert np.all(a.recent_energy(2) == [16, 100])
 
     # AnnotatedRingTap
     a = AnnotatedRing(3, 4)
