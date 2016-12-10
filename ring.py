@@ -11,10 +11,11 @@ class Ring(object):
 
     """
     def __init__(self, length, dtype=None):
-        self.__index       = 0 # where we will place the next sample (not the last sample placed)
-        self.__content     = np.zeros(length, dtype)
-        self.__length      = length
-        self.__active_taps = {}
+        self.__index         = 0 # where we will place the next sample (not the last sample placed)
+        self.__content       = np.zeros(length, dtype)
+        self.__length        = length
+        self.__active_taps   = {}
+        self.__inactive_taps = {}
 
     def __setitem__(self, key, value):
         raise TypeError('Ring only supports assignment through the .append method')
@@ -103,6 +104,13 @@ class Ring(object):
     def index(self):
         return self.__index
 
+    @property
+    def active_taps(self):
+        return self.__active_taps
+
+    @property
+    def inactive_taps(self):
+        return self.__inactive_taps
 
 
 class RingTap(object):
@@ -127,6 +135,18 @@ class RingTap(object):
         self.index = self.get_ring().index_of(0)
 
         self.__samples_elapsed = 0
+
+    def activate(self):
+        ring = self.get_ring()
+        if self.name in ring.inactive_taps:
+            del ring.inactive_taps[self.name]
+        ring.active_taps[self.name] = self
+
+    def deactivate(self):
+        ring = self.get_ring()
+        if self.name in ring.active_taps:
+            del ring.active_taps[self.name]
+        ring.inactive_taps[self.name] = self
 
     def advance(self, amount):
         """ advance the index by <amount> samples """

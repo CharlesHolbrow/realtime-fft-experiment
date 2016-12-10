@@ -2,6 +2,22 @@ import numpy as np
 
 from ring import Ring, RingPointerWarning, AnnotatedRing
 
+
+def test_tap_activation():
+    a = Ring(16)
+    t = a.create_tap()
+    t.deactivate()
+    assert t.name in a.inactive_taps
+    assert t.name not in a.active_taps
+    a.append(np.arange(15))
+    a.append([99])
+    t.activate()
+    assert t.name in a.active_taps
+    assert t.name not in a.inactive_taps
+    s = t.get_samples(1)
+    assert s[0] == 99
+
+
 def test_annotated_ring():
     a = AnnotatedRing(2, 4)
     assert len(a) == 8
@@ -130,4 +146,5 @@ def test():
 if __name__ == '__main__':
     test()
     test_annotated_ring()
+    test_tap_activation()
 
