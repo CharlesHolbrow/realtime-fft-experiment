@@ -1,17 +1,20 @@
 import numpy as np
 import weakref
+import random
+import string
 import sys
 eps = np.finfo(float).eps
+
 
 class Ring(object):
     """
 
     """
     def __init__(self, length, dtype=None):
-        self.__index   = 0 # where we will place the next sample (not the last sample placed)
-        self.__content = np.zeros(length, dtype)
-        self.__length  = length
-        self.__taps    = []
+        self.__index       = 0 # where we will place the next sample (not the last sample placed)
+        self.__content     = np.zeros(length, dtype)
+        self.__length      = length
+        self.__active_taps = {}
 
     def __setitem__(self, key, value):
         raise TypeError('Ring only supports assignment through the .append method')
@@ -54,7 +57,8 @@ class Ring(object):
     def append(self, items):
         count = len(items)
 
-        for tap in self.__taps:
+        for name in self.__active_taps:
+            tap = self.__active_taps[name]
             if tap.valid_ring_space < count:
                 tap.valid = False
                 raise RingPointerWarning('Pointer broken')
@@ -87,7 +91,9 @@ class Ring(object):
         return tap
 
     def add_tap(self, tap):
-        self.__taps.append(tap)
+        if tap.name in self.__active_taps:
+            raise NameError('a tap named {0} already exists'.format(tap.name))
+        self.__active_taps[tap.name] = tap
 
     @property
     def raw(self):
@@ -100,11 +106,19 @@ class Ring(object):
 
 
 class RingTap(object):
-    def __init__(self, ring):
+    def __init__(self, ring, name=None):
         if not isinstance(ring, Ring):
             raise TypeError('RingPosition requires an instance of Ring')
+
+        # If no name was supplied, use a random string
+        if name is None:
+            name = ''.join(random.choice(string.ascii_uppercase) for i in range(8))
+        if not isinstance(name, str):
+            raise TypeError('RingTap name must be a string')
+        self.name = name
+
         # weakref returns a function. call self.get_ring() to get the ring
-        self.get_ring   = weakref.ref(ring)
+        self.get_ring = weakref.ref(ring)
 
         # Are all the samples between here and the ring[0] valid?
         self.valid = True
