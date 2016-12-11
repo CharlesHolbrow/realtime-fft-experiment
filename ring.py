@@ -249,6 +249,8 @@ class AnnotatedRing(Ring):
     def append(self, items):
         # How far in to the most recent boundary is the index
         boundary_distance = self.index % self.__blocksize
+
+        # How many boundaries are we going to cross in this call to .append?
         boundaries_crossed = (boundary_distance + len(items)) / self.__blocksize
 
         # At what index does the first boundary start?
@@ -313,9 +315,6 @@ class AnnotatedRing(Ring):
 
         # sys.stdout.write("{: >9.3f} {: >9.3f} \r".format(np.max(diffs), np.min(diffs)))
         # sys.stdout.flush()
-
-        if np.any(transients):
-            print 'Transients: {0} \n'.format(np.sum(transients))
 
     def create_tap(self):
         tap = AnnotatedRingTap(self)

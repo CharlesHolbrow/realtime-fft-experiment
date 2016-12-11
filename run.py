@@ -73,8 +73,17 @@ try:
         # sys.stdout.write('window: {0} seconds elapsed: {1}. \r'.format(windowsize, seconds_elapsed))
         # sys.stdout.flush()
 
-        audio_input = indata.flatten()
-        input_buffer.append(audio_input)
+        audio_input        = indata.flatten()
+        boundaries_crossed = input_buffer.append(audio_input)
+        new_transients     = input_buffer.recent_transients(boundaries_crossed)
+        boundary_indices   = np.array(input_buffer.recent_block_indices(boundaries_crossed))
+        if np.any(new_transients):
+            # these are block_indices of transients in the last .append call
+            indices = boundary_indices[np.nonzero(new_transients)[0]]
+            print '---', indices
+            print input_buffer.recent_energy(boundaries_crossed)
+            print boundary_indices
+
 
         samples_to_next_transient = tap.samples_to_next_transient
         if tap.samples_elapsed > 1 * samplerate:
