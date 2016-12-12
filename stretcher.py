@@ -54,7 +54,6 @@ class Stretcher(object):
         """
         self.__in_tap   = tap
         self.__buffer   = Ring(2**16)
-        # self.__out_tap  = self.__buffer.create_tap()
 
     def step(self, windowsize, stretch_amount = 4, gain = 1.):
         """
@@ -105,6 +104,11 @@ class Stretcher(object):
 
         return audio_phased[:sw.half] * gain
 
+    @property
+    def tap(self):
+        return self.__in_tap
+
+
 class StretchGroup(object):
     def __init__(self, ring):
 
@@ -116,14 +120,14 @@ class StretchGroup(object):
         self.__inactive_taps = ring.inactive_taps
         self.stretches = {}
 
-        # temporary measure to get .step() working
-        self.s1 = self.create_stretcher()
+        self.create_stretcher()
+        self.create_stretcher()
 
     def create_stretcher(self):
-        tap       = self.ring.create_tap()
-        tap.index = self.ring.index_of(-8392 + 1)
-        stretch = Stretcher(tap)
+        tap = self.ring.create_tap()
+        tap.deactivate()
 
+        stretch = Stretcher(tap)
         self.stretches[tap.name] = stretch
         return stretch
 
@@ -139,9 +143,20 @@ class StretchGroup(object):
 
         results = np.zeros(num_samples) # should dtype be set explicitly?
         for name, stretcher in self.stretches.iteritems():
+            # make sure that this tap is active before we try to stretch it
+            if name not in self.__active_taps: continue
             results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
 
         return results
+
+    def get_inactive_stretcher(self):
+        """ Return an unused stretcher from this group if one exists. If all
+        stretchers are in use, return None.
+        """
+        if len(self.__inactive_taps) == 0:
+            return None
+        name = self.__inactive_taps.iterkeys().next()
+        return self.stretches[name]
 
     @property
     def ring(self):

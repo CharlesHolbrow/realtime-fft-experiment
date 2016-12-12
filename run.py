@@ -31,7 +31,7 @@ latency = None
 
 try:
     cumulated_status = sd.CallbackFlags()
-    size = 128 * 1024 * 120 * 4
+    size = 128 * 1024 * 120
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
     input_buffer  = AnnotatedRing(size / 512, 512)
     stretch_group = StretchGroup(input_buffer)
@@ -55,27 +55,29 @@ try:
             shape = np.shape(indata)
             print 'input shape: {0}'.format(np.shape(indata))
 
-        # How many frames have we processed
-        samples_elapsed += shape[0]
-        seconds_elapsed = float(samples_elapsed) / samplerate
-        frames_elapsed += 1
-
         audio_input        = indata.flatten()
         boundaries_crossed = input_buffer.append(audio_input)
         new_transients     = input_buffer.recent_transients(boundaries_crossed)
 
-        if np.any(new_transients):
+        if np.any(new_transients) and frames_elapsed > 0:
             boundary_indices   = np.array(input_buffer.recent_block_indices(boundaries_crossed))
             # these are block_indices of transients in the last .append call
             transient_block_indices = boundary_indices[np.nonzero(new_transients)[0]]
             raw_transient_indices   = transient_block_indices * input_buffer.blocksize
 
-            # How many real seconds has our stretcher traversed?
-            print float(samples_elapsed) / samplerate
-                # tap.index = raw_transient_indices[0] - 18392 + 1
+            stretcher = stretch_group.get_inactive_stretcher()
+            if stretcher:
+                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1
+                print stretcher.tap.valid_buffer_length
+                stretcher.tap.activate()
 
         results = stretch_group.step(blocksize)
         outdata[:] = np.column_stack((results, results))
+
+        # How many frames have we processed
+        samples_elapsed += shape[0]
+        seconds_elapsed = float(samples_elapsed) / samplerate
+        frames_elapsed += 1
 
 
     with sd.Stream(device=(input_device, output_device),
