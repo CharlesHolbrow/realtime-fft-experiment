@@ -46,7 +46,6 @@ try:
     def callback(indata, outdata, frames, time, status):
         global cumulated_status
         global shape
-        global ring
         global stretcher
         global frames_elapsed
         global samples_elapsed
@@ -65,33 +64,26 @@ try:
         seconds_elapsed = float(samples_elapsed) / samplerate
         frames_elapsed += 1
 
+        audio_input        = indata.flatten()
+        boundaries_crossed = input_buffer.append(audio_input)
+        new_transients     = input_buffer.recent_transients(boundaries_crossed)
+        if np.any(new_transients):
+            boundary_indices   = np.array(input_buffer.recent_block_indices(boundaries_crossed))
+            # these are block_indices of transients in the last .append call
+            transient_block_indices = boundary_indices[np.nonzero(new_transients)[0]]
+            raw_transient_indices   = transient_block_indices * input_buffer.blocksize
+
+            # How many real seconds has our stretcher traversed?
+            seconds_stretched = tap.samples_elapsed / float(samplerate)
+            print seconds_stretched
+
+            if seconds_stretched > 5:
+                tap.index = (raw_transient_indices[0] - 18392 + 1) % len(input_buffer)
+
         # raise 2 to this power to get windowsize
         exponent = 14
         windowsize = 2 ** exponent
         number_to_fill = blocksize / (windowsize / 2)
-
-        # sys.stdout.write('window: {0} seconds elapsed: {1}. \r'.format(windowsize, seconds_elapsed))
-        # sys.stdout.flush()
-
-        audio_input        = indata.flatten()
-        boundaries_crossed = input_buffer.append(audio_input)
-        new_transients     = input_buffer.recent_transients(boundaries_crossed)
-        boundary_indices   = np.array(input_buffer.recent_block_indices(boundaries_crossed))
-        if np.any(new_transients):
-            # these are block_indices of transients in the last .append call
-            indices = boundary_indices[np.nonzero(new_transients)[0]]
-            print '---', indices
-            print input_buffer.recent_energy(boundaries_crossed)
-            print boundary_indices
-
-
-        samples_to_next_transient = tap.samples_to_next_transient
-        if tap.samples_elapsed > 1 * samplerate:
-            if samples_to_next_transient <= len(audio_input):
-                pass
-                # tap.index = input_buffer.index_of(-22050 + 1)
-
-        # sys.stdout.write('{0} \r'.format(ring.)); sys.stdout.flush()
 
         results = np.concatenate([stretcher.step(windowsize, 8) for i in range(number_to_fill)])
         outdata[:] = np.column_stack((results, results))

@@ -58,8 +58,7 @@ class Ring(object):
     def append(self, items):
         count = len(items)
 
-        for name in self.__active_taps:
-            tap = self.__active_taps[name]
+        for name, tap in self.__active_taps.iteritems():
             if tap.valid_ring_space < count:
                 tap.valid = False
                 raise RingPointerWarning('Pointer broken')
