@@ -35,11 +35,6 @@ try:
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
     input_buffer  = AnnotatedRing(size / 512, 512)
     stretch_group = StretchGroup(input_buffer)
-
-    tap           = input_buffer.create_tap()
-    stretcher     = Stretcher(tap)
-    tap.index     = input_buffer.index_of(-8392 + 1)
-    print 'valid tap buffer length in seconds: {0}'.format(float(tap.valid_buffer_length) / samplerate)
     shape           = (0,0)
     frames_elapsed  = 0
     samples_elapsed = 0
@@ -48,7 +43,6 @@ try:
     def callback(indata, outdata, frames, time, status):
         global cumulated_status
         global shape
-        global stretcher
         global frames_elapsed
         global samples_elapsed
         cumulated_status |= status
@@ -69,6 +63,7 @@ try:
         audio_input        = indata.flatten()
         boundaries_crossed = input_buffer.append(audio_input)
         new_transients     = input_buffer.recent_transients(boundaries_crossed)
+
         if np.any(new_transients):
             boundary_indices   = np.array(input_buffer.recent_block_indices(boundaries_crossed))
             # these are block_indices of transients in the last .append call
@@ -76,18 +71,10 @@ try:
             raw_transient_indices   = transient_block_indices * input_buffer.blocksize
 
             # How many real seconds has our stretcher traversed?
-            seconds_stretched = tap.samples_elapsed / float(samplerate)
-            print seconds_stretched
+            print float(samples_elapsed) / samplerate
+                # tap.index = raw_transient_indices[0] - 18392 + 1
 
-            if seconds_stretched > 5:
-                tap.index = raw_transient_indices[0] - 18392 + 1
-
-        # raise 2 to this power to get windowsize
-        exponent = 14
-        windowsize = 2 ** exponent
-        number_to_fill = blocksize / (windowsize / 2)
-
-        results = np.concatenate([stretcher.step(windowsize, 8) for i in range(number_to_fill)])
+        results = stretch_group.step(blocksize)
         outdata[:] = np.column_stack((results, results))
 
 

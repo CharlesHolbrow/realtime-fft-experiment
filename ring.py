@@ -60,6 +60,7 @@ class Ring(object):
 
         for name, tap in self.__active_taps.iteritems():
             if tap.valid_ring_space < count:
+                print 'Tap deactivated: {0}'.format(name)
                 tap.valid = False
                 tap.deactivate()
 

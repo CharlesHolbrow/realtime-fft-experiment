@@ -114,7 +114,34 @@ class StretchGroup(object):
         self.__ring = ring
         self.__active_taps = ring.active_taps
         self.__inactive_taps = ring.inactive_taps
-        self.strechers = []
+        self.stretches = {}
+
+        # temporary measure to get .step() working
+        self.s1 = self.create_stretcher()
+
+    def create_stretcher(self):
+        tap       = self.ring.create_tap()
+        tap.index = self.ring.index_of(-8392 + 1)
+        stretch = Stretcher(tap)
+
+        self.stretches[tap.name] = stretch
+        return stretch
+
+    def step(self, num_samples):
+        """ take a step num_samples long
+
+        num samples must be a in integer multiple of the halfwindowsize calculated here
+        """
+
+        exponent = 14 # raise 2 to this power to get windowsize
+        windowsize = 2 ** exponent
+        num_strech_steps = num_samples / (windowsize / 2)
+
+        results = np.zeros(num_samples) # should dtype be set explicitly?
+        for name, stretcher in self.stretches.iteritems():
+            results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
+
+        return results
 
     @property
     def ring(self):
