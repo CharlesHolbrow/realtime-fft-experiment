@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import fft
 
-from ring import Ring
+from ring import Ring, AnnotatedRing
 
 class StretchWindow(object):
     def __init__(self, size):
@@ -104,3 +104,19 @@ class Stretcher(object):
         self.__buffer.append(audio_phased)
 
         return audio_phased[:sw.half] * gain
+
+class StretchGroup(object):
+    def __init__(self, ring):
+
+        if not isinstance(ring, AnnotatedRing):
+            raise TypeError('Stretch Group requires annotated Ring')
+
+        self.__ring = ring
+        self.__active_taps = ring.active_taps
+        self.__inactive_taps = ring.inactive_taps
+        self.strechers = []
+
+    @property
+    def ring(self):
+        return self.__ring
+

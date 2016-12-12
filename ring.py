@@ -61,7 +61,7 @@ class Ring(object):
         for name, tap in self.__active_taps.iteritems():
             if tap.valid_ring_space < count:
                 tap.valid = False
-                raise RingPointerWarning('Pointer broken')
+                tap.deactivate()
 
         # In the most common case, we don't have to loop around
         if self.__index + count <= self.__length:
@@ -205,9 +205,7 @@ class RingTap(object):
     def index(self, i):
         """ set the index of ring.__content[index]. Assume i is a valid index
         """
-        if i >= len(self.get_ring()):
-            raise IndexError('index out of range')
-        self.__ring_index = i
+        self.__ring_index = i % len(self.get_ring())
         self.valid = True
         self.__samples_elapsed = 0
 

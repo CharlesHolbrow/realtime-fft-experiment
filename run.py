@@ -6,7 +6,7 @@ from scipy.fftpack import fft, ifft, fftshift
 import logging
 
 from ring import Ring, AnnotatedRing
-from stretcher import Stretcher
+from stretcher import Stretcher, StretchGroup
 
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
@@ -34,6 +34,8 @@ try:
     size = 128 * 1024 * 120 * 4
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
     input_buffer  = AnnotatedRing(size / 512, 512)
+    stretch_group = StretchGroup(input_buffer)
+
     tap           = input_buffer.create_tap()
     stretcher     = Stretcher(tap)
     tap.index     = input_buffer.index_of(-8392 + 1)
@@ -78,7 +80,7 @@ try:
             print seconds_stretched
 
             if seconds_stretched > 5:
-                tap.index = (raw_transient_indices[0] - 18392 + 1) % len(input_buffer)
+                tap.index = raw_transient_indices[0] - 18392 + 1
 
         # raise 2 to this power to get windowsize
         exponent = 14
