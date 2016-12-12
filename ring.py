@@ -58,7 +58,9 @@ class Ring(object):
     def append(self, items):
         count = len(items)
 
-        for name, tap in self.__active_taps.iteritems():
+        # We cannot use iteritems because deactivate() modifies __active_taps.
+        # We must use items instead.
+        for name, tap in self.__active_taps.items():
             if tap.valid_ring_space < count:
                 print 'Tap deactivated: {0}'.format(name)
                 tap.valid = False
