@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import fft
+import sys
 
 from ring import Ring, AnnotatedRing
 
@@ -123,6 +124,7 @@ class StretchGroup(object):
         self.create_stretcher()
         self.create_stretcher()
 
+
     def create_stretcher(self):
         tap = self.ring.create_tap()
         tap.deactivate()
@@ -145,7 +147,19 @@ class StretchGroup(object):
         for name, stretcher in self.stretches.iteritems():
             # make sure that this tap is active before we try to stretch it
             if name not in self.__active_taps: continue
+            # check if we have an upcoming silence
+
             results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
+
+            # Caution, this expects teh samples rate to be 44100
+            num_below = stretcher.tap.number_below(0.01)
+            seconds_below = float(num_below) * self.__ring.blocksize / 44100
+
+            sys.stdout.write('\r  {0:.3f} \r'.format(seconds_below))
+            sys.stdout.flush()
+            if seconds_below > 4:
+                print 'deactivate: {0}'.format(name)
+                stretcher.tap.deactivate()
 
         return results
 

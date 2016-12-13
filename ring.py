@@ -371,6 +371,10 @@ class AnnotatedRing(Ring):
     def transients(self):
         return self.__transients
 
+    @property
+    def energy(self):
+        return self.__energy
+
 
 class AnnotatedRingTap(RingTap):
 
@@ -434,6 +438,41 @@ class AnnotatedRingTap(RingTap):
 
         elif tap_block_index < ring_block_index:
             return np.arange(tap_block_index, ring_block_index + 1)
+
+    def upcoming_energy_blocks(self, number=None):
+        """ Get an array containing the value of the upcoming <number> energy
+        blocks. The actuall array size will be smaller if we have fewer valid
+        indices.
+        """
+        ring = self.get_ring()
+        energy = ring.energy[self.valid_indices[:number]]
+        return energy
+
+    def decrescendo_length(self, number=None):
+        """ For how many blocks into the future does this keep getting quieter
+        """
+        en = self.upcoming_energy_blocks(number)
+        energy = np.array([ en[i]<en[i+1] for i in range(len(en) - 1) ])
+
+        # is the block lower than the next one?
+        is_increasing = np.nonzero(energy)[0]
+
+        if len(is_increasing) == 0:
+            return np.array([])
+        else:
+            return is_increasing[0]
+
+    def number_below(self, value):
+        """ How many of the upcoming samples are below <value>?
+        """
+        en = self.upcoming_energy_blocks()
+        is_above = np.array(en) >= float(value)
+        if np.any(is_above):
+            return np.argmax(is_above)
+        else:
+            return len(is_above)
+
+
 
 class RingPointerWarning(UserWarning):
     pass

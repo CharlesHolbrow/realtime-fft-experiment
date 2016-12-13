@@ -68,7 +68,7 @@ try:
             stretcher = stretch_group.get_inactive_stretcher()
             if stretcher:
                 stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1
-                print stretcher.tap.valid_buffer_length
+                print 'ACTIVATE: {0}'.format(stretcher.tap.name)
                 stretcher.tap.activate()
 
         results = stretch_group.step(blocksize)
