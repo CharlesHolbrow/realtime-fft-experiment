@@ -123,6 +123,8 @@ class StretchGroup(object):
 
         self.create_stretcher()
         self.create_stretcher()
+        self.create_stretcher()
+        self.create_stretcher()
 
 
     def create_stretcher(self):
@@ -152,12 +154,14 @@ class StretchGroup(object):
             results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
 
             # Caution, this expects teh samples rate to be 44100
-            num_below = stretcher.tap.number_below(0.01)
+            num_below = stretcher.tap.number_below(0.1)
             seconds_below = float(num_below) * self.__ring.blocksize / 44100
 
-            sys.stdout.write('\r  {0:.3f} \r'.format(seconds_below))
-            sys.stdout.flush()
-            if seconds_below > 4:
+            # sys.stdout.write('\r  {0:.3f} \r'.format(seconds_below))
+            # sys.stdout.flush()
+            # If we have been quiet for a while, and this tap has been running
+            # for a while, then deactivate this stretcher
+            if seconds_below > 2 and stretcher.tap.samples_elapsed > 5 * 44100:
                 print 'deactivate: {0}'.format(name)
                 stretcher.tap.deactivate()
 

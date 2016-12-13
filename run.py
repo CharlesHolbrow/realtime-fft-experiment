@@ -10,11 +10,12 @@ from stretcher import Stretcher, StretchGroup
 
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
+devices = sd.query_devices()
 
 # input_device (int or str): input device id
-input_device = None
+input_device = 3 if len(devices) == 4 else None
 # output_device (int or str): output device id
-output_device = None
+output_device = 3 if len(devices) == 4 else None
 # channels (int): number of channels. is this input or output?
 in_channels = 1
 out_channels = 2
@@ -38,6 +39,7 @@ try:
     shape           = (0,0)
     frames_elapsed  = 0
     samples_elapsed = 0
+    previous_energy = 0
 
 
     def callback(indata, outdata, frames, time, status):
@@ -45,6 +47,7 @@ try:
         global shape
         global frames_elapsed
         global samples_elapsed
+        global previous_energy
         cumulated_status |= status
 
         # np.shape(indata) will equal (frames, in_channels) where frames is the
@@ -66,18 +69,22 @@ try:
             raw_transient_indices   = transient_block_indices * input_buffer.blocksize
 
             stretcher = stretch_group.get_inactive_stretcher()
-            if stretcher:
-                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1
+            # Only activate a new stretcher if one is available, and the the current volume is low
+            if stretcher and previous_energy < .1: ### Caution, constant used deep in code
+                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1 - 22050
                 print 'ACTIVATE: {0}'.format(stretcher.tap.name)
                 stretcher.tap.activate()
 
         results = stretch_group.step(blocksize)
         outdata[:] = np.column_stack((results, results))
 
+        sys.stdout.write(' {0:.3f}\r'.format(previous_energy)); sys.stdout.flush()
+
         # How many frames have we processed
         samples_elapsed += shape[0]
         seconds_elapsed = float(samples_elapsed) / samplerate
         frames_elapsed += 1
+        previous_energy = np.sum(outdata ** 2)
 
 
     with sd.Stream(device=(input_device, output_device),

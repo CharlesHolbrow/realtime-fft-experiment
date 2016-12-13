@@ -439,6 +439,28 @@ class AnnotatedRingTap(RingTap):
         elif tap_block_index < ring_block_index:
             return np.arange(tap_block_index, ring_block_index + 1)
 
+    @property
+    def previous_valid_indices(self):
+        annotated_ring = self.get_ring()
+        tap_block_index = self.block_index
+        ring_block_index = annotated_ring.previous_updated_block_index
+        num_blocks = annotated_ring.num_blocks
+
+        if not self.valid:
+            return np.array([])
+
+        # If both indices are in the same block, the ring index must be in the
+        # next block.
+        if tap_block_index == ring_block_index:
+            return np.array([tap_block_index])
+
+        # we do not need to wrap around
+        elif tap_block_index > ring_block_index:
+            return np.arange(tap_block_index, ring_block_index, -1)
+
+        elif tap_block_index < ring_block_index:
+            return np.arange(tap_block_index, ring_block_index - num_blocks, -1) % num_blocks
+
     def upcoming_energy_blocks(self, number=None):
         """ Get an array containing the value of the upcoming <number> energy
         blocks. The actuall array size will be smaller if we have fewer valid
@@ -446,6 +468,16 @@ class AnnotatedRingTap(RingTap):
         """
         ring = self.get_ring()
         energy = ring.energy[self.valid_indices[:number]]
+        return energy
+
+    def previous_energy_blocks(self, number=None):
+        """ Get an array containing the value of the preceeding <number> energy
+        blocks. Note that the array will be in reverse chronological order.
+        [0] will be the current location, [1] will be the energy that happened
+        just before
+        """
+        ring = self.get_ring()
+        energy = ring.energy[self.previous_valid_indices[:number]]
         return energy
 
     def decrescendo_length(self, number=None):
@@ -463,9 +495,9 @@ class AnnotatedRingTap(RingTap):
             return is_increasing[0]
 
     def number_below(self, value):
-        """ How many of the upcoming samples are below <value>?
+        """ How many of the previous samples are below <value>?
         """
-        en = self.upcoming_energy_blocks()
+        en = self.previous_energy_blocks()
         is_above = np.array(en) >= float(value)
         if np.any(is_above):
             return np.argmax(is_above)
