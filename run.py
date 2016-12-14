@@ -1,12 +1,13 @@
 import sys
 import sounddevice as sd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft, fftshift
 import logging
 
 from ring import Ring, AnnotatedRing
 from stretcher import Stretcher, StretchGroup
+from stretch_io import StretchIO
 
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
@@ -41,9 +42,28 @@ try:
     samples_elapsed = 0
     previous_energy = 0
     last_activation = -99999999999
+    osc_io          = StretchIO()
+
+    def button_callback(button, state):
+        # touchOSC buttons index at one
+        if button > len(stretch_group.stretches_list):
+            return
+
+        s = stretch_group.stretches_list[button-1]
+        if state == 0:
+            print 'deactivate: {0}'.format(s.tap.name)
+            s.tap.deactivate()
+        else:
+            print 'ACTIVATE: {0}'.format(s.tap.name)
+            s.tap.index = input_buffer.index - blocksize
+            print s.tap.index
+            s.tap.activate()
 
 
-    def callback(indata, outdata, frames, time, status):
+    osc_io.register_toggle_handler(button_callback)
+
+
+    def audio_callback(indata, outdata, frames, time, status):
         global cumulated_status
         global shape
         global frames_elapsed
@@ -55,6 +75,8 @@ try:
         # np.shape(indata) will equal (frames, in_channels) where frames is the
         # number of samples provided by sounddevice, and in_channels is the
         # number of input channels.
+
+        osc_io.step()
 
         if shape != np.shape(indata):
             shape = np.shape(indata)
@@ -69,14 +91,7 @@ try:
             # these are block_indices of transients in the last .append call
             transient_block_indices = boundary_indices[np.nonzero(new_transients)[0]]
             raw_transient_indices   = transient_block_indices * input_buffer.blocksize
-
-            stretcher = stretch_group.get_inactive_stretcher()
-            # Only activate a new stretcher if one is available, and the the current volume is low
-            if stretcher and previous_energy < .1 and samples_elapsed - last_activation > 10 * samplerate: ### Caution, constant used in code
-                last_activation = samples_elapsed
-                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1 - 11025
-                print 'ACTIVATE: {0}'.format(stretcher.tap.name)
-                stretcher.tap.activate()
+            transient_index         = raw_transient_indices[0]
 
         results = stretch_group.step(blocksize)
         outdata[:] = np.column_stack((results, results))
@@ -96,7 +111,7 @@ try:
                    blocksize=blocksize,
                    dtype=dtype,
                    latency=latency,
-                   callback=callback):
+                   callback=audio_callback):
         print("#" * 80)
         print("press Return to quit")
         print("#" * 80)

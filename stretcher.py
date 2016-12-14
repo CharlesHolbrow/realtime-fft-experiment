@@ -120,6 +120,7 @@ class StretchGroup(object):
         self.__active_taps = ring.active_taps
         self.__inactive_taps = ring.inactive_taps
         self.stretches = {}
+        self.stretches_list = []
 
         self.create_stretcher()
         self.create_stretcher()
@@ -133,6 +134,7 @@ class StretchGroup(object):
 
         stretch = Stretcher(tap)
         self.stretches[tap.name] = stretch
+        self.stretches_list.append(stretch)
         return stretch
 
     def step(self, num_samples):
@@ -140,7 +142,6 @@ class StretchGroup(object):
 
         num samples must be a in integer multiple of the halfwindowsize calculated here
         """
-
         exponent = 14 # raise 2 to this power to get windowsize
         windowsize = 2 ** exponent
         num_strech_steps = num_samples / (windowsize / 2)
@@ -149,21 +150,7 @@ class StretchGroup(object):
         for name, stretcher in self.stretches.iteritems():
             # make sure that this tap is active before we try to stretch it
             if name not in self.__active_taps: continue
-            # check if we have an upcoming silence
-
             results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
-
-            # Caution, this expects teh samples rate to be 44100
-            num_below = stretcher.tap.number_below(0.1)
-            seconds_below = float(num_below) * self.__ring.blocksize / 44100
-
-            # sys.stdout.write('\r  {0:.3f} \r'.format(seconds_below))
-            # sys.stdout.flush()
-            # If we have been quiet for a while, and this tap has been running
-            # for a while, then deactivate this stretcher
-            if seconds_below > 3 and stretcher.tap.samples_elapsed > 6 * 44100:
-                print 'deactivate: {0}'.format(name)
-                stretcher.tap.deactivate()
 
         return results
 
