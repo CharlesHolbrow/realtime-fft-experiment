@@ -161,7 +161,7 @@ class StretchGroup(object):
             # sys.stdout.flush()
             # If we have been quiet for a while, and this tap has been running
             # for a while, then deactivate this stretcher
-            if seconds_below > 2 and stretcher.tap.samples_elapsed > 5 * 44100:
+            if seconds_below > 3 and stretcher.tap.samples_elapsed > 6 * 44100:
                 print 'deactivate: {0}'.format(name)
                 stretcher.tap.deactivate()
 

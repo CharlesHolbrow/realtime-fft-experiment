@@ -40,6 +40,7 @@ try:
     frames_elapsed  = 0
     samples_elapsed = 0
     previous_energy = 0
+    last_activation = -99999999999
 
 
     def callback(indata, outdata, frames, time, status):
@@ -48,6 +49,7 @@ try:
         global frames_elapsed
         global samples_elapsed
         global previous_energy
+        global last_activation
         cumulated_status |= status
 
         # np.shape(indata) will equal (frames, in_channels) where frames is the
@@ -70,8 +72,9 @@ try:
 
             stretcher = stretch_group.get_inactive_stretcher()
             # Only activate a new stretcher if one is available, and the the current volume is low
-            if stretcher and previous_energy < .1: ### Caution, constant used deep in code
-                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1 - 22050
+            if stretcher and previous_energy < .1 and samples_elapsed - last_activation > 10 * samplerate: ### Caution, constant used in code
+                last_activation = samples_elapsed
+                stretcher.tap.index = raw_transient_indices[0] - 2*blocksize + 1 - 11025
                 print 'ACTIVATE: {0}'.format(stretcher.tap.name)
                 stretcher.tap.activate()
 
