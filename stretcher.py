@@ -109,9 +109,11 @@ class Stretcher(object):
     def tap(self):
         return self.__in_tap
 
+    def clear(self):
+        self.__buffer.raw.fill(0.)
 
 class StretchGroup(object):
-    def __init__(self, ring):
+    def __init__(self, ring, osc_io):
 
         if not isinstance(ring, AnnotatedRing):
             raise TypeError('Stretch Group requires annotated Ring')
@@ -119,6 +121,7 @@ class StretchGroup(object):
         self.__ring = ring
         self.__active_taps = ring.active_taps
         self.__inactive_taps = ring.inactive_taps
+        self.__io      = osc_io
         self.stretches = {}
         self.stretches_list = []
 
@@ -147,10 +150,16 @@ class StretchGroup(object):
         num_strech_steps = num_samples / (windowsize / 2)
 
         results = np.zeros(num_samples) # should dtype be set explicitly?
-        for name, stretcher in self.stretches.iteritems():
+        for i, stretcher in enumerate(self.stretches_list):
+            tap = stretcher.tap
+            name = tap.name
             # make sure that this tap is active before we try to stretch it
-            if name not in self.__active_taps: continue
-            results += np.concatenate([stretcher.step(windowsize, 8) for i in range(num_strech_steps)])
+            if name not in self.__active_taps:
+                continue
+            # sys.stdout.write(' {0:.5f} \r'.format(stretcher.tap.energy_unit())); sys.stdout.flush()
+            self.__io.led(i + 1, tap.energy_unit())
+            stretch_amt = self.__io.fader_state(i)
+            results += np.concatenate([stretcher.step(windowsize, stretch_amt) for i in range(num_strech_steps)])
 
         return results
 

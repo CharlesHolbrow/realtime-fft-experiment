@@ -480,6 +480,21 @@ class AnnotatedRingTap(RingTap):
         energy = ring.energy[self.previous_valid_indices[:number]]
         return energy
 
+    def energy_db(self):
+        """ Get the most recently upddated energy at this tap. 
+        """
+        ring = self.get_ring()
+        en = float(ring.energy[self.block_index])
+        return 10 * np.log10((en / ring.blocksize))
+
+    def energy_unit(self):
+        """ Get an energy level roughly scaled from 0. to 1. """
+        db = self.energy_db()
+        db += 80. # approx between 0 and 70
+        if db < eps: db = eps
+        if db > 70.: db = 70.
+        return float(db / 70.)
+
     def decrescendo_length(self, number=None):
         """ For how many blocks into the future does this keep getting quieter
         """

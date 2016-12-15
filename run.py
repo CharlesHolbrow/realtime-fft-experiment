@@ -35,14 +35,14 @@ try:
     cumulated_status = sd.CallbackFlags()
     size = 128 * 1024 * 120
     print 'duration in seconds: {0}'.format(float(size) / samplerate)
-    input_buffer  = AnnotatedRing(size / 512, 512)
-    stretch_group = StretchGroup(input_buffer)
+    osc_io          = StretchIO()
+    input_buffer    = AnnotatedRing(size / 512, 512)
+    stretch_group   = StretchGroup(input_buffer, osc_io)
     shape           = (0,0)
     frames_elapsed  = 0
     samples_elapsed = 0
     previous_energy = 0
     last_activation = -99999999999
-    osc_io          = StretchIO()
 
     def button_callback(button, state):
         # touchOSC buttons index at one
@@ -52,7 +52,9 @@ try:
         s = stretch_group.stretches_list[button-1]
         if state == 0:
             print 'deactivate: {0}'.format(s.tap.name)
+            s.clear()
             s.tap.deactivate()
+            osc_io.led(button, 0)
         else:
             print 'ACTIVATE: {0}'.format(s.tap.name)
             s.tap.index = input_buffer.index - blocksize
@@ -60,7 +62,7 @@ try:
             s.tap.activate()
 
 
-    osc_io.register_toggle_handler(button_callback)
+    osc_io.set_toggle_handler(button_callback)
 
 
     def audio_callback(indata, outdata, frames, time, status):
@@ -96,7 +98,7 @@ try:
         results = stretch_group.step(blocksize)
         outdata[:] = np.column_stack((results, results))
 
-        sys.stdout.write(' {0:.3f}\r'.format(previous_energy)); sys.stdout.flush()
+        # sys.stdout.write(' {0:.3f}\r'.format(previous_energy)); sys.stdout.flush()
 
         # How many frames have we processed
         samples_elapsed += shape[0]
