@@ -4,7 +4,7 @@ import types
 
 from time import sleep
 
-from OSC import OSCServer, OSCClient, OSCMessage
+from OSC import OSCServer, OSCClient, OSCMessage, OSCClientError
 
 
 class StretchIO(object):
@@ -39,10 +39,13 @@ class StretchIO(object):
         while not self.server.timed_out:
             self.server.handle_request()
 
-    def send(self, v):
-        m = OSCMessage('/1/fader1')
-        m.append(float(v))
-        self.client.send(m)
+    def send(self, m):
+        try:
+            self.client.send(m)
+        except OSCClientError:
+            sys.stdout.write('Send Fail: {0} \r'.format(m))
+            sys.stdout.flush()
+
 
     def close(self):
         self.server.close()
@@ -84,7 +87,6 @@ class StretchIO(object):
             self.__fader_state[num-1] = state
 
         if name == 'toggle' and self.__toggle_cb is not None:
-            print name, num, state
             self.__toggle_cb(num, state)
         elif name == 'fader' and self.__fader_cb is not None:
             self.__fader_state[num-1] = state
@@ -97,15 +99,15 @@ class StretchIO(object):
         m.append(value)
         if value > 1.0: value = 1.0
         if value < 0.0: value = 0.0
-        self.client.send(m)
+        self.send(m)
     def toggle(self, toggle_num, value):
         m = OSCMessage('/1/toggle{0:d}'.format(toggle_num))
         m.append(1 if value else 0)
-        self.client.send(m)
+        self.send(m)
     def fader(self, fader_num, value):
         m = OSCMessage('/1/fader{0:d}'.format(fader_num))
         m.append(float(value))
-        self.client.send(m)
+        self.send(m)
 
     def fader_state(self, i):
         """

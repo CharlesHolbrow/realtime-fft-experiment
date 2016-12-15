@@ -58,7 +58,6 @@ try:
         else:
             print 'ACTIVATE: {0}'.format(s.tap.name)
             s.tap.index = input_buffer.index - blocksize
-            print s.tap.index
             s.tap.activate()
 
 
