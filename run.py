@@ -53,7 +53,6 @@ try:
         if state == 0:
             print 'fade out: {0}'.format(s.tap.name)
             s.fade_out()
-            osc_io.led(button, 0)
         else:
             print 'ACTIVATE: {0}'.format(s.tap.name)
             s.tap.index = input_buffer.index - blocksize
@@ -94,8 +93,7 @@ try:
             transient_index         = raw_transient_indices[0]
 
         results = stretch_group.step(blocksize)
-        outdata[:] = np.column_stack((results, results))
-
+        outdata[:] = results
         # sys.stdout.write(' {0:.3f}\r'.format(previous_energy)); sys.stdout.flush()
 
         # How many frames have we processed

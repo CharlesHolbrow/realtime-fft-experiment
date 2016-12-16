@@ -127,6 +127,7 @@ class Stretcher(object):
         self.__fading_out = True
 
     def activate(self):
+        self.__fading_out = False
         self.tap.activate()
 
     def deactivate(self):
@@ -185,7 +186,7 @@ class StretchGroup(object):
         windowsize = 2 ** exponent
         num_strech_steps = num_samples / (windowsize / 2)
 
-        results = np.zeros(num_samples) # should dtype be set explicitly?
+        results = np.zeros((num_samples, 2)) # should dtype be set explicitly?
 
         for i, stretcher in enumerate(self.stretches_list):
             tap = stretcher.tap
@@ -193,16 +194,23 @@ class StretchGroup(object):
             # make sure that this tap is active before we try to stretch it
             if name not in self.__active_taps:
                 continue
-            # sys.stdout.write(' {0:.5f} \r'.format(stretcher.tap.energy_unit())); sys.stdout.flush()
-            self.__io.led(i + 1, tap.energy_unit())
+
+            # Get the current position of the fader from touchosc
             stretch_amt = self.__io.fader_state(i)
-            answer = np.concatenate([stretcher.step(windowsize, stretch_amt) for i in range(num_strech_steps)])
+            answer = np.concatenate([stretcher.step(windowsize, stretch_amt) for j in range(num_strech_steps)])
 
             if stretcher.fading_out:
                 stretcher.fading_out = False
                 answer *= get_fade_out(len(answer))
                 stretcher.deactivate()
-            results += answer
+                self.__io.led(i + 1, 0)
+            else:
+                self.__io.led(i + 1, tap.energy_unit())
+
+            if i in [0, 1, 2]:
+                results[:, 0] += answer
+            if i in [1, 2, 3]:
+                results[:, 1] += answer
 
         return results
 
