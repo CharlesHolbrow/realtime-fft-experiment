@@ -51,14 +51,13 @@ try:
 
         s = stretch_group.stretches_list[button-1]
         if state == 0:
-            print 'deactivate: {0}'.format(s.tap.name)
-            s.clear()
-            s.tap.deactivate()
+            print 'fade out: {0}'.format(s.tap.name)
+            s.fade_out()
             osc_io.led(button, 0)
         else:
             print 'ACTIVATE: {0}'.format(s.tap.name)
             s.tap.index = input_buffer.index - blocksize
-            s.tap.activate()
+            s.activate()
 
 
     osc_io.set_toggle_handler(button_callback)

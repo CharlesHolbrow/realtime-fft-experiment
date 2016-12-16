@@ -45,6 +45,12 @@ def get_strech(windowsize):
         stretches[windowsize] = StretchWindow(windowsize)
     return stretches[windowsize]
 
+fade_outs = {}
+def get_fade_out(size):
+    if size not in fade_outs:
+        fade_outs[size] = np.logspace(1, np.finfo(float).eps, size, base=10.) / 10
+    return fade_outs[size]
+
 class Stretcher(object):
     """ Given a tap pointer in a Ring buffer, generate the stretched audio
     """
@@ -53,13 +59,14 @@ class Stretcher(object):
         """
         tap (RingPosition): the starting point where our stretch begins
         """
-        self.__in_tap   = tap
-        self.__buffer   = Ring(2**16)
-        self.__gain     = 1.0
+        self.__in_tap     = tap
+        self.__buffer     = Ring(2**16)
+        self.__fading_out = False
 
 
     def step(self, windowsize, *args, **kwargs):
         results = self.stretch(windowsize, *args, **kwargs)
+
         return results
 
     def stretch(self, windowsize, stretch_amount = 4):
@@ -109,13 +116,30 @@ class Stretcher(object):
         # append the audio output to our output buffer
         self.__buffer.append(audio_phased)
 
-        return audio_phased[:sw.half] * self.gain
+        return audio_phased[:sw.half]
+
+    def fade_out(self):
+        """Begin fading the stretch with each .step() .step should deactivate
+    
+        Caution: fade_out is currently implemeted in StretchGroup. See:
+        https://github.com/CharlesHolbrow/realtime-fft-experiment/issues/4
+        """
+        self.__fading_out = True
 
     def activate(self):
-        pass
+        self.tap.activate()
 
     def deactivate(self):
-        pass
+        self.clear()
+        self.tap.deactivate()
+
+    @property
+    def fading_out(self):
+        return self.__fading_out
+
+    @fading_out.setter
+    def fading_out(self, val):
+        self.__fading_out = bool(val)
 
     @property
     def tap(self):
@@ -123,10 +147,6 @@ class Stretcher(object):
 
     def clear(self):
         self.__buffer.raw.fill(0.)
-
-    @property
-    def gain(self):
-        return self.__gain
 
 class StretchGroup(object):
     def __init__(self, ring, osc_io):
@@ -166,6 +186,7 @@ class StretchGroup(object):
         num_strech_steps = num_samples / (windowsize / 2)
 
         results = np.zeros(num_samples) # should dtype be set explicitly?
+
         for i, stretcher in enumerate(self.stretches_list):
             tap = stretcher.tap
             name = tap.name
@@ -175,7 +196,13 @@ class StretchGroup(object):
             # sys.stdout.write(' {0:.5f} \r'.format(stretcher.tap.energy_unit())); sys.stdout.flush()
             self.__io.led(i + 1, tap.energy_unit())
             stretch_amt = self.__io.fader_state(i)
-            results += np.concatenate([stretcher.step(windowsize, stretch_amt) for i in range(num_strech_steps)])
+            answer = np.concatenate([stretcher.step(windowsize, stretch_amt) for i in range(num_strech_steps)])
+
+            if stretcher.fading_out:
+                stretcher.fading_out = False
+                answer *= get_fade_out(len(answer))
+                stretcher.deactivate()
+            results += answer
 
         return results
 
