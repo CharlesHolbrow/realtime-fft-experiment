@@ -55,8 +55,14 @@ class Stretcher(object):
         """
         self.__in_tap   = tap
         self.__buffer   = Ring(2**16)
+        self.__gain     = 1.0
 
-    def step(self, windowsize, stretch_amount = 4, gain = 1.):
+
+    def step(self, windowsize, *args, **kwargs):
+        results = self.stretch(windowsize, *args, **kwargs)
+        return results
+
+    def stretch(self, windowsize, stretch_amount = 4):
         """
         Run paulstretch once from the current location of the tap point
         """
@@ -103,7 +109,13 @@ class Stretcher(object):
         # append the audio output to our output buffer
         self.__buffer.append(audio_phased)
 
-        return audio_phased[:sw.half] * gain
+        return audio_phased[:sw.half] * self.gain
+
+    def activate(self):
+        pass
+
+    def deactivate(self):
+        pass
 
     @property
     def tap(self):
@@ -112,18 +124,22 @@ class Stretcher(object):
     def clear(self):
         self.__buffer.raw.fill(0.)
 
+    @property
+    def gain(self):
+        return self.__gain
+
 class StretchGroup(object):
     def __init__(self, ring, osc_io):
 
         if not isinstance(ring, AnnotatedRing):
             raise TypeError('Stretch Group requires annotated Ring')
 
-        self.__ring = ring
-        self.__active_taps = ring.active_taps
+        self.__ring          = ring
+        self.__active_taps   = ring.active_taps
         self.__inactive_taps = ring.inactive_taps
-        self.__io      = osc_io
-        self.stretches = {}
-        self.stretches_list = []
+        self.__io            = osc_io
+        self.stretches       = {}
+        self.stretches_list  = []
 
         self.create_stretcher()
         self.create_stretcher()

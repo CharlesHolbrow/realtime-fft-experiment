@@ -89,7 +89,6 @@ class StretchIO(object):
         if name == 'toggle' and self.__toggle_cb is not None:
             self.__toggle_cb(num, state)
         elif name == 'fader' and self.__fader_cb is not None:
-            self.__fader_state[num-1] = state
             self.__fader_cb(num, state)
 
 
