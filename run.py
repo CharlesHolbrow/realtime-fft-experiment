@@ -33,8 +33,8 @@ latency = None
 
 try:
     cumulated_status = sd.CallbackFlags()
-    size = 128 * 1024 * 120
-    print 'duration in seconds: {0}'.format(float(size) / samplerate)
+    size = 128 * 1024 * 120 * 16
+    print 'duration in minutes: {0}'.format(float(size) / samplerate / 60)
     osc_io          = StretchIO()
     input_buffer    = AnnotatedRing(size / 512, 512)
     stretch_group   = StretchGroup(input_buffer, osc_io)
