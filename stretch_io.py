@@ -9,7 +9,7 @@ from OSC import OSCServer, OSCClient, OSCMessage, OSCClientError
 
 class StretchIO(object):
 
-    def __init__(self, listen=("0.0.0.0", 12340), send=("18.85.26.64", 12341)):
+    def __init__(self, send, listen=("0.0.0.0", 12340)):
         self.server = OSCServer(listen)
         self.server.timeout = 0.0
         self.server.timed_out = False

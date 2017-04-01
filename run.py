@@ -9,14 +9,16 @@ from ring import Ring, AnnotatedRing
 from stretcher import Stretcher, StretchGroup
 from stretch_io import StretchIO
 
+print('\nProtip: use "$ python sounddevice -m" do see available audio devices')
+
 # arguments to sd.Stream are here:
 # http://python-sounddevice.readthedocs.io/en/0.3.5/index.html?highlight=CallbackFlags#sounddevice.Stream
 devices = sd.query_devices()
 
 # input_device (int or str): input device id
-input_device = 3 if len(devices) == 4 else None
+input_device = 2 if len(devices) == 3 else None
 # output_device (int or str): output device id
-output_device = 3 if len(devices) == 4 else None
+output_device = 2 if len(devices) == 3 else None
 # channels (int): number of channels. is this input or output?
 in_channels = 1
 out_channels = 2
@@ -30,12 +32,22 @@ blocksize = 2**13
 latency = None
 
 
+sendIp=("18.85.25.231", 12341)
+# sendIp=("26.67.222.83", 12341)
+
+# for d in devices: print(d['name'], d['max_input_channels'], d['max_output_channels'])
+
+input_device = 3
+output_device = 1
+
+print('input:  '+ devices[input_device]['name'])
+print('output: '+ devices[output_device]['name'])
 
 try:
     cumulated_status = sd.CallbackFlags()
     size = 128 * 1024 * 120 * 16
-    print 'duration in minutes: {0}'.format(float(size) / samplerate / 60)
-    osc_io          = StretchIO()
+    print('duration in minutes: {0}'.format(float(size) / samplerate / 60))
+    osc_io          = StretchIO(sendIp)
     input_buffer    = AnnotatedRing(size / 512, 512)
     stretch_group   = StretchGroup(input_buffer, osc_io)
     shape           = (0,0)
@@ -51,10 +63,10 @@ try:
 
         s = stretch_group.stretches_list[button-1]
         if state == 0:
-            print 'fade out: {0}'.format(s.tap.name)
+            print('fade out: {0}'.format(s.tap.name))
             s.fade_out()
         else:
-            print 'ACTIVATE: {0}'.format(s.tap.name)
+            print('ACTIVATE: {0}'.format(s.tap.name))
             s.tap.index = input_buffer.index - blocksize
             s.activate()
 
@@ -79,7 +91,7 @@ try:
 
         if shape != np.shape(indata):
             shape = np.shape(indata)
-            print 'input shape: {0}'.format(np.shape(indata))
+            print('input shape: {0}'.format(np.shape(indata)))
 
         audio_input        = indata.flatten()
         boundaries_crossed = input_buffer.append(audio_input)
@@ -110,9 +122,7 @@ try:
                    dtype=dtype,
                    latency=latency,
                    callback=audio_callback):
-        print("#" * 80)
-        print("press Return to quit")
-        print("#" * 80)
+        print("\npress Return to quit")
         raw_input()
 
     if cumulated_status:
@@ -122,7 +132,7 @@ except KeyboardInterrupt:
     print('KeyboardInterrupt')
     sys.exit()
 except Exception as e:
-    print 'error caught:'
-    print type(e).__name__ + ': ' + str(e)
+    print('error caught:')
+    print(type(e).__name__ + ': ' + str(e))
     sys.exit()
 
