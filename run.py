@@ -37,8 +37,8 @@ sendIp=("18.85.25.231", 12341)
 
 # for d in devices: print(d['name'], d['max_input_channels'], d['max_output_channels'])
 
-input_device = 2
-output_device = 1
+input_device = 3
+output_device = 7
 
 print('input:  '+ devices[input_device]['name'])
 print('output: '+ devices[output_device]['name'])
